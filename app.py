@@ -165,13 +165,16 @@ with st.sidebar:
             else:
                 ss.df, ss.data_label = new, f"Uploaded: {up.name} ({len(new)} vendors)"
                 ss.memo, ss.chat = None, []
-                st.success(f"Loaded {len(new)} vendors.")
+                ss.upload_warnings = warns  # kept so they survive the rerun below
                 st.rerun()
     elif not ss.data_label.startswith("Sample"):
         ss.df, ss.data_label = sample_data(), defaults["data_label"]
-        ss.memo, ss.chat = None, []
+        ss.memo, ss.chat, ss.upload_warnings = None, [], []
         st.rerun()
     st.caption(ss.data_label)
+    if not ss.data_label.startswith("Sample"):
+        for w in ss.get("upload_warnings", []):
+            st.warning(w)
 
     st.divider()
     with st.expander("🔒 Privacy & AI disclosure"):
