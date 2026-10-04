@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from datetime import datetime
 
 import altair as alt
@@ -300,7 +301,7 @@ eligible, excluded = sc.filter_vendors(df, req)
 pool = df[df.category == req["category"]]
 ranked = sc.score(eligible, weights, req["quantity"], pool) if norm else eligible.iloc[0:0]
 sens = sc.sensitivity(eligible, weights, req["quantity"], reference=pool) if norm and len(eligible) > 1 else {"scenarios": 0, "same_winner": 0, "flips": []}
-checks = sc.rule_checks(ranked, req["quantity"]) if norm else []
+checks = sc.rule_checks(ranked, req["quantity"], excluded) if norm else []
 payload = sc.build_payload(req, weights, ranked, excluded, sens, checks) if len(ranked) else None
 payload_json = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str) if payload else ""
 phash = hashlib.sha1(payload_json.encode()).hexdigest()[:10] if payload else None
@@ -486,6 +487,9 @@ with t4:
                 with st.spinner("Thinking…"):
                     reply = get_client(API_KEY, MODELS).answer(q, payload, ss.chat[:-1])
                 ss.ai_calls += 1
+                note = sc.cheaper_note(ranked, excluded)
+                if note and re.search(r"cheap|lowest (?:price|cost)|\bL1\b", reply, re.I):
+                    reply += f"\n\nℹ️ *Checked by the app: {note}*"
                 bad = ai.unverified_figures(reply, payload)
                 if bad:
                     reply += f"\n\n⚠️ *Check these figures, which aren't in the vendor data: {', '.join(bad)}*"
