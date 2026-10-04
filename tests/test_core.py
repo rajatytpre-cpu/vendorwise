@@ -79,3 +79,11 @@ def test_no_rank_reversal_when_filter_drops_a_vendor():
         el, _ = sc.filter_vendors(df, dict(REQ, category=cat, quantity=q))
         winners.append(sc.score(el, sc.DEFAULT_WEIGHTS, q, pool).iloc[0].vendor_id)
     assert winners == ["CB01", "CB01"]
+
+def test_cheaper_excluded_vendor_is_flagged():
+    req = dict(REQ, quantity=8000, max_lead_days=10, iso_required=True)
+    el, ex = sc.filter_vendors(df, req)
+    r = sc.score(el, sc.PRESETS["Quality-first"], 8000, df[df.category == req["category"]])
+    note = sc.cheaper_note(r, ex)
+    assert "Max Power Wires" in note and "41.10" in note and "not ISO" in note
+    assert any("Max Power Wires" in m for _, m in sc.rule_checks(r, 8000, ex))
