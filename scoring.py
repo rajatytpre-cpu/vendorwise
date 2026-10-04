@@ -238,12 +238,14 @@ def sensitivity(eligible: pd.DataFrame, weights: dict, quantity: int, step: int 
     return {"scenarios": scenarios, "same_winner": same, "flips": flips}
 
 
-def rule_checks(ranked: pd.DataFrame, quantity: int) -> list[tuple[str, str]]:
+def rule_checks(ranked: pd.DataFrame, quantity: int, excluded: pd.DataFrame | None = None) -> list[tuple[str, str]]:
     """Simple rules a purchase manager would apply. Returns (level, message) pairs."""
     if ranked.empty:
         return [("error", "No vendor meets the requirement. Relax the lead time, price cap or ISO filter.")]
     top = ranked.iloc[0]
     out = []
+    if excluded is not None and cheaper_note(ranked, excluded):
+        out.append(("info", cheaper_note(ranked, excluded)))
     if len(ranked) == 1:
         out.append(("warning", "Only one vendor qualifies, so there is no competition and you are single-sourcing."))
     l1 = ranked.sort_values("unit_price_inr").iloc[0]
@@ -253,7 +255,7 @@ def rule_checks(ranked: pd.DataFrame, quantity: int) -> list[tuple[str, str]]:
         prem = (top.unit_price_inr / l1.unit_price_inr - 1) * 100
         extra = (top.unit_price_inr - l1.unit_price_inr) * quantity
         out.append(
-            ("info", f"The top-ranked vendor costs {prem:.1f}% more than L1 ({l1.vendor_name}, ₹{l1.unit_price_inr:,.2f}): "
+            ("info", f"The top-ranked vendor costs {prem:.1f}% more than L1, the cheapest eligible vendor ({l1.vendor_name}, ₹{l1.unit_price_inr:,.2f}): "
                      f"₹{extra:,.0f} extra on this order. Check that the quality and delivery gain is worth it.")
         )
     if top.defect_rate_pct > 2:
@@ -268,6 +270,22 @@ def rule_checks(ranked: pd.DataFrame, quantity: int) -> list[tuple[str, str]]:
             out.append(("warning", f"Close call: only {gap:.1f} points separate #1 and #2 ({ranked.iloc[1].vendor_name}). "
                                    "Consider splitting the order 70/30 or negotiating with both."))
     return out
+
+
+def cheaper_excluded(ranked: pd.DataFrame, excluded: pd.DataFrame) -> pd.DataFrame:
+    """Excluded vendors that are cheaper than the cheapest eligible one (so 'L1' is never misread)."""
+    if ranked.empty or excluded.empty:
+        return excluded.iloc[0:0]
+    floor = ranked.unit_price_inr.min()
+    return excluded[excluded.unit_price_inr < floor].sort_values("unit_price_inr")
+
+
+def cheaper_note(ranked: pd.DataFrame, excluded: pd.DataFrame) -> str:
+    c = cheaper_excluded(ranked, excluded)
+    if c.empty:
+        return ""
+    parts = [f"{r.vendor_name} (₹{r.unit_price_inr:,.2f}: {r.exclusion_reason})" for _, r in c.iterrows()]
+    return "Cheaper vendors were excluded by your requirement: " + "; ".join(parts) + "."
 
 
 def build_payload(req: dict, weights: dict, ranked: pd.DataFrame, excluded: pd.DataFrame, sens: dict, checks) -> dict:
