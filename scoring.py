@@ -303,7 +303,8 @@ def build_payload(req: dict, weights: dict, ranked: pd.DataFrame, excluded: pd.D
         "weights_pct": {CRITERIA[k]: round(v * 100) for k, v in w.items()},
         "ranked_vendors": vendors,
         "excluded_vendors": [
-            {"vendor_name": r.vendor_name, "reason": r.exclusion_reason} for _, r in excluded.iterrows()
+            {"vendor_name": r.vendor_name, "unit_price_inr": float(r.unit_price_inr), "reason": r.exclusion_reason}
+            for _, r in excluded.iterrows()
         ],
         "precomputed_facts": facts,
         "rule_checks": [m for _, m in checks],
