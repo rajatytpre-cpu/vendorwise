@@ -146,7 +146,7 @@ with st.sidebar:
             ss.ai_nonce += 1
             check_ai.clear()
             st.rerun()
-    st.caption(f"AI calls this session: {ss.ai_calls}/{ai.MAX_CALLS_PER_SESSION}")
+    calls_slot = st.empty()  # filled at the end of the run, after any AI call
 
     st.divider()
     st.markdown("**Vendor data**")
@@ -367,7 +367,7 @@ with t2:
             alt.Chart(long)
             .mark_bar()
             .encode(
-                y=alt.Y("vendor_name:N", sort=list(ranked.head(6).vendor_name), title=None, axis=alt.Axis(labelLimit=220)),
+                y=alt.Y("vendor_name:N", sort=list(ranked.head(6).vendor_name), title=None, axis=alt.Axis(labelLimit=220, labelOverlap=False)),
                 x=alt.X("sum(points):Q", title="Score (0–100)", scale=alt.Scale(domain=[0, 100])),
                 color=alt.Color("criterion:N", sort=list(sc.CRITERIA.values()),
                                 scale=alt.Scale(domain=list(sc.CRITERIA.values()),
@@ -504,3 +504,5 @@ with t5:
     view = df[df.category.isin(cat_f)]
     st.dataframe(view, hide_index=True, use_container_width=True, height=460)
     st.caption(f"{len(view)} vendors · {view.category.nunique()} categories")
+
+calls_slot.caption(f"AI calls this session: {ss.ai_calls}/{ai.MAX_CALLS_PER_SESSION}")
