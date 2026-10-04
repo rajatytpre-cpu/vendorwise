@@ -127,7 +127,7 @@ def load_csv(file) -> tuple[pd.DataFrame | None, list[str], list[str]]:
         bad = df[cleaned.isna() | (cleaned < lo) | (cleaned > hi)]
         if len(bad):
             warnings.append(
-                f"Dropped {len(bad)} row(s) where '{col}' was missing or outside {lo:g} to {hi:g} "
+                f"Dropped {len(bad)} row(s) where '{col}' was missing or outside {lo:,g} to {hi:,.0f} "
                 f"(e.g. {', '.join(bad.vendor_id.head(3))})."
             )
             df = df.drop(bad.index)
